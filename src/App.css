@@ -63,7 +63,7 @@
 .admin-roster-heading,
 .admin-roster-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 12px;
 }
 
@@ -91,6 +91,47 @@
 .admin-roster-row input:focus {
   border-color: #82977b;
   box-shadow: 0 0 0 3px rgb(130 151 123 / 14%);
+}
+
+.remove-subject-button {
+  min-width: 58px;
+  padding: 0 7px;
+  border: 1px solid #e7e4e0;
+  border-radius: 5px;
+  background: #fff;
+  color: #8e766b;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.remove-subject-button:hover:not(:disabled) {
+  border-color: #d7b9aa;
+  background: #fbf7f4;
+}
+
+.remove-subject-button:disabled {
+  color: #b5b7b4;
+  cursor: not-allowed;
+}
+
+.add-subject-button {
+  justify-self: start;
+  min-height: 34px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border: 1px solid #dce4d6;
+  border-radius: 5px;
+  background: #f9fbf7;
+  color: #52694c;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-subject-button:hover {
+  background: #eef4e8;
 }
 
 .admin-save-row {
@@ -373,10 +414,22 @@
   background: #26382c;
 }
 
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .submit-button span {
   margin-left: 16px;
   color: #d0e5b5;
   font-size: 17px;
+}
+
+.form-error {
+  margin: 0;
+  color: #a23e36;
+  font-size: 12px;
+  text-align: center;
 }
 
 .form-note {
@@ -450,15 +503,47 @@
   font-size: 11px;
 }
 
+.subject-progress {
+  display: grid;
+  gap: 7px;
+  margin: -5px 0 2px;
+}
+
+.subject-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #7d867e;
+  font-size: 10px;
+}
+
+.subject-progress strong {
+  color: #50624d;
+  font-weight: 650;
+}
+
+.subject-progress-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #e9eee5;
+}
+
+.subject-progress-track span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #829a72;
+  transition: width 180ms ease;
+}
+
 .subject-list {
   display: grid;
   gap: 12px;
 }
 
 .subject-card {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(185px, 0.9fr);
-  gap: 15px 22px;
+  display: block;
   padding: 16px;
   border: 1px solid #e8ebe6;
   border-radius: 8px;
@@ -496,6 +581,124 @@
   margin: 4px 0 0;
   color: #8e978e;
   font-size: 10px;
+}
+
+.subject-card > .subject-title {
+  margin-bottom: 16px;
+}
+
+.criteria-sections {
+  display: grid;
+  gap: 15px;
+}
+
+.criteria-section {
+  overflow: hidden;
+  border: 1px solid #e7ebe5;
+  border-radius: 6px;
+}
+
+.criteria-section h4 {
+  margin: 0;
+  padding: 10px 12px;
+  background: #f0f3ee;
+  color: #445342;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.criteria-header,
+.criteria-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(5, 34px);
+  align-items: center;
+  gap: 5px;
+  padding: 9px 12px;
+}
+
+.criteria-header {
+  background: #f8f9f7;
+  color: #818a80;
+  font-size: 9px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.criteria-header span:first-child {
+  text-align: left;
+}
+
+.criteria-row {
+  min-height: 48px;
+  border-top: 1px solid #eef0ed;
+}
+
+.criteria-row > p {
+  margin: 0;
+  padding-right: 7px;
+  color: #485249;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.criteria-row > p > span {
+  margin-right: 3px;
+  color: #82917b;
+  font-weight: 650;
+}
+
+.criteria-row fieldset {
+  display: contents;
+}
+
+.criteria-choice {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  cursor: pointer;
+}
+
+.criteria-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.criteria-choice > span:first-of-type {
+  width: 16px;
+  height: 16px;
+  display: block;
+  border: 1.5px solid #aab2a8;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color 130ms ease, background 130ms ease, box-shadow 130ms ease;
+}
+
+.criteria-choice:hover > span:first-of-type {
+  border-color: #71896a;
+}
+
+.criteria-choice input:checked + span {
+  border: 5px solid #607b58;
+}
+
+.criteria-choice input:focus-visible + span {
+  outline: 3px solid rgb(130 151 123 / 30%);
+  outline-offset: 2px;
+}
+
+.subject-comment {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.subject-comment .comment-label {
+  align-self: auto;
 }
 
 .rating-field {

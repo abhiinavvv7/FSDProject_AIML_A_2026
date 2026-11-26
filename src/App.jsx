@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { feedbackSections } from './feedbackSections.js'
 
 const ROSTER_STORAGE_KEY = 'faculty-feedback-roster-v1'
 
@@ -75,9 +76,12 @@ function App() {
   const [adminAuthenticated, setAdminAuthenticated] = useState(false)
   const [adminLogin, setAdminLogin] = useState({ username: '', password: '' })
   const [step, setStep] = useState(1)
+  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0)
   const [student, setStudent] = useState({ name: '', rollNumber: '', branch: '', semester: '' })
   const [feedback, setFeedback] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [assignments, setAssignments] = useState(readSavedAssignments)
   const [adminBranch, setAdminBranch] = useState('CSE')
   const [adminSemester, setAdminSemester] = useState('1')
@@ -94,7 +98,8 @@ function App() {
 
   const studentKey = rosterKey(student.branch, student.semester)
   const selectedSubjects = assignments[studentKey] || subjectsByBranch[student.branch] || []
-  const selectedFeedback = feedback[studentKey] || selectedSubjects.map(() => ({ rating: '', comment: '' }))
+  const savedFeedback = feedback[studentKey] || []
+  const selectedFeedback = selectedSubjects.map((_, index) => savedFeedback[index] || ({ ratings: {}, comment: '' }))
   const adminKey = rosterKey(adminBranch, adminSemester)
 
   function loadAdminRoster(branch, semester) {
@@ -108,13 +113,18 @@ function App() {
   function updateStudent(event) {
     const { name, value } = event.target
     setStudent((current) => ({ ...current, [name]: value }))
+    if (name === 'branch' || name === 'semester') setCurrentSubjectIndex(0)
   }
 
-  function updateFeedback(index, key, value) {
+  function updateFeedback(subjectIndex, key, value, questionId) {
     setFeedback((current) => ({
       ...current,
       [studentKey]: selectedFeedback.map((item, itemIndex) => (
-        itemIndex === index ? { ...item, [key]: value } : item
+        itemIndex === subjectIndex
+          ? key === 'rating'
+            ? { ...item, ratings: { ...item.ratings, [questionId]: value } }
+            : { ...item, [key]: value }
+          : item
       )),
     }))
   }
@@ -123,6 +133,16 @@ function App() {
     setAdminSubjects((current) => current.map((subject, subjectIndex) => (
       subjectIndex === index ? { ...subject, [key]: value } : subject
     )))
+    setAdminSaved(false)
+  }
+
+  function addAdminSubject() {
+    setAdminSubjects((current) => [...current, { subject: '', faculty: '' }])
+    setAdminSaved(false)
+  }
+
+  function removeAdminSubject(index) {
+    setAdminSubjects((current) => current.filter((_, subjectIndex) => subjectIndex !== index))
     setAdminSaved(false)
   }
 
@@ -150,14 +170,49 @@ function App() {
     setSubmitted(false)
   }
 
-  function submitFeedback(event) {
+  async function submitFeedback(event) {
     event.preventDefault()
-    setSubmitted(true)
+    if (currentSubjectIndex < selectedSubjects.length - 1) {
+      setCurrentSubjectIndex((current) => current + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    setIsSaving(true)
+    setSubmitError('')
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          student: {
+            name: student.name,
+            rollNumber: student.rollNumber,
+            branch: student.branch,
+            semester: student.semester,
+          },
+          subjects: selectedSubjects.map(([name, faculty], index) => ({
+            name,
+            faculty,
+            ratings: selectedFeedback[index].ratings,
+            comment: selectedFeedback[index].comment,
+          })),
+        }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || 'Feedback could not be saved. Please try again.')
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(error.message || 'Feedback could not be saved. Please check your connection and try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function startAnotherResponse() {
     setStudent({ name: '', rollNumber: '', branch: '', semester: '' })
     setStep(1)
+    setCurrentSubjectIndex(0)
     setSubmitted(false)
     setFeedback({})
   }
@@ -238,7 +293,7 @@ function App() {
             <CollegeLogo />
             <p className="eyebrow">ADMIN</p>
             <h1 id="admin-title">Manage subjects and faculty</h1>
-            <p className="intro">Choose a branch and semester to edit the subject and faculty names students will see.</p>
+            <p className="intro">Choose a branch and semester to edit the subject and faculty names students will see. Add as many subjects as needed.</p>
           </header>
 
           <div className="form-row admin-selectors">
@@ -257,15 +312,17 @@ function App() {
           </div>
 
           <form className="admin-roster" onSubmit={saveAdminRoster}>
-            <div className="admin-roster-heading"><span>SUBJECT</span><span>FACULTY</span></div>
+            <div className="admin-roster-heading"><span>SUBJECT</span><span>FACULTY</span><span aria-hidden="true" /></div>
             {adminSubjects.map((item, index) => (
               <div className="admin-roster-row" key={`${adminKey}-${index}`}>
                 <label className="sr-only" htmlFor={`admin-subject-${index}`}>Subject {index + 1} name</label>
                 <input id={`admin-subject-${index}`} value={item.subject} onChange={(event) => updateAdminSubject(index, 'subject', event.target.value)} required />
                 <label className="sr-only" htmlFor={`admin-faculty-${index}`}>Subject {index + 1} faculty name</label>
                 <input id={`admin-faculty-${index}`} value={item.faculty} onChange={(event) => updateAdminSubject(index, 'faculty', event.target.value)} required />
+                <button className="remove-subject-button" type="button" aria-label={`Remove subject ${index + 1}`} onClick={() => removeAdminSubject(index)} disabled={adminSubjects.length <= 1}>Remove</button>
               </div>
             ))}
+            <button className="add-subject-button" type="button" onClick={addAdminSubject}>＋ Add subject</button>
             <div className="admin-save-row">
               <p className="form-note" role="status">{adminSaved ? 'Saved. Students will see these assignments.' : 'Sample roster. Edit names and save your changes.'}</p>
               <button className="submit-button" type="submit">Save changes <span aria-hidden="true">→</span></button>
@@ -284,8 +341,8 @@ function App() {
           <div className="success-mark" aria-hidden="true">✓</div>
           <p className="eyebrow">FEEDBACK RECEIVED</p>
           <h1>Thank you, {student.name.split(' ')[0]}.</h1>
-          <p className="intro">Your feedback for {selectedSubjects.length} subjects has been submitted.</p>
-          <p className="form-note">Demo only — responses are not connected to a server yet.</p>
+          <p className="intro">Your feedback for {selectedSubjects.length} subjects has been saved.</p>
+          <p className="form-note">Your response is stored in this project’s local database.</p>
           <button className="secondary-button" type="button" onClick={startAnotherResponse}>Start another response</button>
         </section>
       </main>
@@ -313,7 +370,7 @@ function App() {
         </header>
 
         {step === 1 ? (
-          <form className="feedback-form" onSubmit={(event) => { event.preventDefault(); setStep(2) }}>
+          <form className="feedback-form" onSubmit={(event) => { event.preventDefault(); setCurrentSubjectIndex(0); setStep(2) }}>
             <div className="field">
               <label htmlFor="student-name">Student name</label>
               <input id="student-name" name="name" autoComplete="name" placeholder="Enter your full name" value={student.name} onChange={updateStudent} required />
@@ -355,52 +412,91 @@ function App() {
 
             <div className="subject-heading">
               <h2>Your subjects <span>{selectedSubjects.length}</span></h2>
-              <p>Rate each faculty member from 1 (needs improvement) to 5 (excellent).</p>
+              <p>Rate each statement from 1 (needs improvement) to 5 (excellent).</p>
+            </div>
+
+            <div className="subject-progress">
+              <div><strong>Currently rating</strong><span>{currentSubjectIndex + 1} / {selectedSubjects.length}</span></div>
+              <div className="subject-progress-track" role="progressbar" aria-valuemin="1" aria-valuemax={selectedSubjects.length} aria-valuenow={currentSubjectIndex + 1} aria-label="Faculty feedback progress">
+                <span style={{ width: `${((currentSubjectIndex + 1) / selectedSubjects.length) * 100}%` }} />
+              </div>
             </div>
 
             <div className="subject-list">
-              {selectedSubjects.map(([subject, faculty], index) => (
+              {selectedSubjects.map(([subject, faculty], index) => index === currentSubjectIndex && (
                 <article className="subject-card" key={`${student.branch}-${subject}`}>
                   <div className="subject-title">
                     <span className="subject-number">{String(index + 1).padStart(2, '0')}</span>
                     <div><h3>{subject}</h3><p>{faculty}</p></div>
                   </div>
-                  <fieldset className="rating-field">
-                    <legend>Faculty rating <span aria-hidden="true">*</span></legend>
-                    <div className="rating-options">
-                      {[1, 2, 3, 4, 5].map((rating) => (
-                        <label className="rating-option" key={rating}>
-                          <input
-                            type="radio"
-                            name={`rating-${index}`}
-                            value={rating}
-                            checked={selectedFeedback[index]?.rating === String(rating)}
-                            onChange={(event) => updateFeedback(index, 'rating', event.target.value)}
-                            required
-                          />
-                          <span>{rating}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="rating-hints"><span>Needs improvement</span><span>Excellent</span></div>
-                  </fieldset>
-                  <label className="comment-label" htmlFor={`comment-${index}`}>Comment <span>(optional)</span></label>
-                  <textarea
-                    id={`comment-${index}`}
-                    rows="2"
-                    placeholder="Share a brief comment about this class"
-                    value={selectedFeedback[index]?.comment || ''}
-                    onChange={(event) => updateFeedback(index, 'comment', event.target.value)}
-                  />
+                  <div className="criteria-sections">
+                    {feedbackSections.map((section, sectionIndex) => (
+                      <section className="criteria-section" key={section.title}>
+                        <h4>{section.title}</h4>
+                        <div className="criteria-header" aria-hidden="true">
+                          <span>Feedback statement</span>
+                          {[1, 2, 3, 4, 5].map((rating) => <span key={rating}>{rating}</span>)}
+                        </div>
+                        {section.questions.map((question, questionIndex) => {
+                          const questionNumber = feedbackSections
+                            .slice(0, sectionIndex)
+                            .reduce((total, previous) => total + previous.questions.length, 0)
+                            + questionIndex + 1
+                          const inputName = `rating-${studentKey}-${index}-${question.id}`
+
+                          return (
+                            <div className="criteria-row" key={question.id}>
+                              <p><span>{questionNumber}.</span> {question.text}</p>
+                              <fieldset aria-label={`${question.text} rating`}>
+                                <legend className="sr-only">Rate from 1 to 5</legend>
+                                {[1, 2, 3, 4, 5].map((rating) => (
+                                  <label className="criteria-choice" key={rating}>
+                                    <input
+                                      type="radio"
+                                      name={inputName}
+                                      value={rating}
+                                      checked={selectedFeedback[index]?.ratings?.[question.id] === String(rating)}
+                                      onChange={(event) => updateFeedback(index, 'rating', event.target.value, question.id)}
+                                      required
+                                    />
+                                    <span aria-hidden="true" />
+                                    <span className="sr-only">{rating}</span>
+                                  </label>
+                                ))}
+                              </fieldset>
+                            </div>
+                          )
+                        })}
+                      </section>
+                    ))}
+                  </div>
+                  <div className="subject-comment">
+                    <label className="comment-label" htmlFor={`comment-${index}`}>Additional comment <span>(optional)</span></label>
+                    <textarea
+                      id={`comment-${index}`}
+                      rows="2"
+                      placeholder="Share any additional feedback about this subject"
+                      value={selectedFeedback[index]?.comment || ''}
+                      onChange={(event) => updateFeedback(index, 'comment', event.target.value)}
+                    />
+                  </div>
                 </article>
               ))}
             </div>
 
             <div className="subject-actions">
-              <button className="secondary-button" type="button" onClick={() => setStep(1)}>Back</button>
-              <button className="submit-button" type="submit">Submit all feedback <span aria-hidden="true">→</span></button>
+              <button className="secondary-button" type="button" onClick={() => currentSubjectIndex > 0 ? setCurrentSubjectIndex((current) => current - 1) : setStep(1)}>
+                {currentSubjectIndex > 0 ? 'Previous faculty' : 'Student details'}
+              </button>
+              <button className="submit-button" type="submit" disabled={isSaving}>
+                {currentSubjectIndex < selectedSubjects.length - 1
+                  ? 'Next faculty'
+                  : isSaving ? 'Saving feedback…' : 'Submit all feedback'}
+                <span aria-hidden="true">→</span>
+              </button>
             </div>
-            <p className="form-note">Demo roster and faculty names are sample data. Responses are not saved yet.</p>
+            {submitError && <p className="form-error" role="alert">{submitError}</p>}
+            <p className="form-note">Roster and faculty names are sample data. Feedback is saved locally when submitted.</p>
           </form>
         )}
       </section>
