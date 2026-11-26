@@ -15,6 +15,98 @@
   box-shadow: 0 12px 36px rgb(20 30 45 / 5%);
 }
 
+.admin-card {
+  width: min(100%, 850px);
+}
+
+.back-link {
+  display: block;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #71836d;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.back-link:hover {
+  color: #40563d;
+  text-decoration: underline;
+}
+
+.admin-selectors {
+  margin-bottom: 20px;
+}
+
+.admin-roster {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-roster-heading,
+.admin-roster-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.admin-roster-heading {
+  padding: 0 2px 2px;
+  color: #828c82;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.admin-roster-row input {
+  width: 100%;
+  height: 39px;
+  padding: 0 11px;
+  border: 1px solid #dce1db;
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+  color: #283129;
+  font: inherit;
+  font-size: 12px;
+}
+
+.admin-roster-row input:focus {
+  border-color: #82977b;
+  box-shadow: 0 0 0 3px rgb(130 151 123 / 14%);
+}
+
+.admin-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 13px;
+}
+
+.admin-save-row .form-note {
+  margin: 0;
+  text-align: left;
+}
+
+.admin-save-row .submit-button {
+  flex: 0 0 auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .role-card {
   align-self: center;
   max-width: 560px;

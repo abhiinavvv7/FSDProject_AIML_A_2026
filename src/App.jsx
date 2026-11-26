@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
+
+const ROSTER_STORAGE_KEY = 'faculty-feedback-roster-v1'
 
 const subjectsByBranch = {
   CSE: [
@@ -44,19 +46,51 @@ const subjectsByBranch = {
   ],
 }
 
-const emptyFeedback = Object.fromEntries(
-  Object.keys(subjectsByBranch).map((branch) => [branch, subjectsByBranch[branch].map(() => ({ rating: '', comment: '' }))]),
-)
+function rosterKey(branch, semester) {
+  return `${branch}::${semester}`
+}
+
+function readSavedAssignments() {
+  try {
+    const saved = localStorage.getItem(ROSTER_STORAGE_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
 
 function App() {
   const [role, setRole] = useState('')
   const [step, setStep] = useState(1)
   const [student, setStudent] = useState({ name: '', rollNumber: '', branch: '', semester: '' })
-  const [feedback, setFeedback] = useState(emptyFeedback)
+  const [feedback, setFeedback] = useState({})
   const [submitted, setSubmitted] = useState(false)
+  const [assignments, setAssignments] = useState(readSavedAssignments)
+  const [adminBranch, setAdminBranch] = useState('CSE')
+  const [adminSemester, setAdminSemester] = useState('1')
+  const [adminSubjects, setAdminSubjects] = useState(() => subjectsByBranch.CSE.map(([subject, faculty]) => ({ subject, faculty })))
+  const [adminSaved, setAdminSaved] = useState(false)
 
-  const selectedSubjects = subjectsByBranch[student.branch] || []
-  const selectedFeedback = feedback[student.branch] || []
+  useEffect(() => {
+    try {
+      localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(assignments))
+    } catch {
+      // Keep the current session usable when browser storage is unavailable.
+    }
+  }, [assignments])
+
+  const studentKey = rosterKey(student.branch, student.semester)
+  const selectedSubjects = assignments[studentKey] || subjectsByBranch[student.branch] || []
+  const selectedFeedback = feedback[studentKey] || selectedSubjects.map(() => ({ rating: '', comment: '' }))
+  const adminKey = rosterKey(adminBranch, adminSemester)
+
+  function loadAdminRoster(branch, semester) {
+    setAdminBranch(branch)
+    setAdminSemester(semester)
+    const savedOrDefault = assignments[rosterKey(branch, semester)] || subjectsByBranch[branch]
+    setAdminSubjects(savedOrDefault.map(([subject, faculty]) => ({ subject, faculty })))
+    setAdminSaved(false)
+  }
 
   function updateStudent(event) {
     const { name, value } = event.target
@@ -66,10 +100,26 @@ function App() {
   function updateFeedback(index, key, value) {
     setFeedback((current) => ({
       ...current,
-      [student.branch]: current[student.branch].map((item, itemIndex) => (
+      [studentKey]: selectedFeedback.map((item, itemIndex) => (
         itemIndex === index ? { ...item, [key]: value } : item
       )),
     }))
+  }
+
+  function updateAdminSubject(index, key, value) {
+    setAdminSubjects((current) => current.map((subject, subjectIndex) => (
+      subjectIndex === index ? { ...subject, [key]: value } : subject
+    )))
+    setAdminSaved(false)
+  }
+
+  function saveAdminRoster(event) {
+    event.preventDefault()
+    setAssignments((current) => ({
+      ...current,
+      [adminKey]: adminSubjects.map(({ subject, faculty }) => [subject.trim(), faculty.trim()]),
+    }))
+    setAdminSaved(true)
   }
 
   function submitFeedback(event) {
@@ -81,6 +131,7 @@ function App() {
     setStudent({ name: '', rollNumber: '', branch: '', semester: '' })
     setStep(1)
     setSubmitted(false)
+    setFeedback({})
   }
 
   if (!role) {
@@ -97,13 +148,60 @@ function App() {
               <span><strong>Student</strong><small>Submit feedback for your subjects</small></span>
               <span className="role-arrow" aria-hidden="true">→</span>
             </button>
-            <button className="role-option admin-option" type="button" disabled>
+            <button className="role-option admin-option" type="button" onClick={() => setRole('admin')}>
               <span className="role-icon" aria-hidden="true">A</span>
-              <span><strong>Admin</strong><small>Admin access is coming soon</small></span>
-              <span className="role-badge">COMING SOON</span>
+              <span><strong>Admin</strong><small>Manage subjects and faculty</small></span>
+              <span className="role-arrow" aria-hidden="true">→</span>
             </button>
           </div>
-          <p className="form-note">Admin tools are not available yet.</p>
+          <p className="form-note">Admin changes are saved in this browser.</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (role === 'admin') {
+    return (
+      <main className="page-shell">
+        <section className="feedback-card admin-card" aria-labelledby="admin-title">
+          <header className="page-header">
+            <button className="back-link" type="button" onClick={() => setRole('')}>← Change role</button>
+            <div className="brand-mark" aria-hidden="true">F</div>
+            <p className="eyebrow">ADMIN</p>
+            <h1 id="admin-title">Manage subjects and faculty</h1>
+            <p className="intro">Choose a branch and semester to edit the subject and faculty names students will see.</p>
+          </header>
+
+          <div className="form-row admin-selectors">
+            <div className="field">
+              <label htmlFor="admin-branch">Branch</label>
+              <select id="admin-branch" value={adminBranch} onChange={(event) => loadAdminRoster(event.target.value, adminSemester)}>
+                {Object.keys(subjectsByBranch).map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="admin-semester">Semester</label>
+              <select id="admin-semester" value={adminSemester} onChange={(event) => loadAdminRoster(adminBranch, event.target.value)}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((semester) => <option key={semester} value={semester}>{`Semester ${semester}`}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <form className="admin-roster" onSubmit={saveAdminRoster}>
+            <div className="admin-roster-heading"><span>SUBJECT</span><span>FACULTY</span></div>
+            {adminSubjects.map((item, index) => (
+              <div className="admin-roster-row" key={`${adminKey}-${index}`}>
+                <label className="sr-only" htmlFor={`admin-subject-${index}`}>Subject {index + 1} name</label>
+                <input id={`admin-subject-${index}`} value={item.subject} onChange={(event) => updateAdminSubject(index, 'subject', event.target.value)} required />
+                <label className="sr-only" htmlFor={`admin-faculty-${index}`}>Subject {index + 1} faculty name</label>
+                <input id={`admin-faculty-${index}`} value={item.faculty} onChange={(event) => updateAdminSubject(index, 'faculty', event.target.value)} required />
+              </div>
+            ))}
+            <div className="admin-save-row">
+              <p className="form-note" role="status">{adminSaved ? 'Saved. Students will see these assignments.' : 'Sample roster. Edit names and save your changes.'}</p>
+              <button className="submit-button" type="submit">Save changes <span aria-hidden="true">→</span></button>
+            </div>
+          </form>
         </section>
       </main>
     )
