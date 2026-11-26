@@ -11,4 +11,4 @@ npm install
 npm run dev
 ```
 
-The default subject and faculty assignments are sample data. There is no server or admin authentication yet, and feedback submissions are not saved.
+The default subject and faculty assignments are sample data. The admin login is a front-end demo and does not verify credentials. Roster edits are saved only in the current browser; feedback submissions are not saved or sent to a server.

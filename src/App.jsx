@@ -59,8 +59,21 @@ function readSavedAssignments() {
   }
 }
 
+function CollegeLogo() {
+  return (
+    <div className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M3 9.5 12 4l9 5.5H3Z" />
+        <path d="M5.5 10v7M9.8 10v7M14.2 10v7M18.5 10v7M4 19h16M3 21h18" />
+      </svg>
+    </div>
+  )
+}
+
 function App() {
   const [role, setRole] = useState('')
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false)
+  const [adminLogin, setAdminLogin] = useState({ username: '', password: '' })
   const [step, setStep] = useState(1)
   const [student, setStudent] = useState({ name: '', rollNumber: '', branch: '', semester: '' })
   const [feedback, setFeedback] = useState({})
@@ -122,6 +135,21 @@ function App() {
     setAdminSaved(true)
   }
 
+  function submitAdminLogin(event) {
+    event.preventDefault()
+    setAdminAuthenticated(true)
+  }
+
+  function changeRole() {
+    setRole('')
+    setAdminAuthenticated(false)
+    setAdminLogin({ username: '', password: '' })
+    setStudent({ name: '', rollNumber: '', branch: '', semester: '' })
+    setFeedback({})
+    setStep(1)
+    setSubmitted(false)
+  }
+
   function submitFeedback(event) {
     event.preventDefault()
     setSubmitted(true)
@@ -138,7 +166,7 @@ function App() {
     return (
       <main className="page-shell">
         <section className="feedback-card role-card" aria-labelledby="role-title">
-          <div className="brand-mark" aria-hidden="true">F</div>
+          <CollegeLogo />
           <p className="eyebrow">FACULTY FEEDBACK</p>
           <h1 id="role-title">How would you like to continue?</h1>
           <p className="intro">Choose the type of account you’re using.</p>
@@ -160,13 +188,54 @@ function App() {
     )
   }
 
-  if (role === 'admin') {
+  if (role === 'admin' && !adminAuthenticated) {
+    return (
+      <main className="page-shell">
+        <section className="feedback-card admin-login-card" aria-labelledby="admin-login-title">
+          <button className="back-link" type="button" onClick={changeRole}>← Change role</button>
+          <CollegeLogo />
+          <p className="eyebrow">ADMIN PORTAL</p>
+          <h1 id="admin-login-title">Admin sign in</h1>
+          <p className="intro">Sign in to manage subjects and faculty assignments.</p>
+          <form className="admin-login-form" onSubmit={submitAdminLogin}>
+            <div className="field">
+              <label htmlFor="admin-username">Admin ID</label>
+              <input
+                id="admin-username"
+                autoComplete="username"
+                placeholder="Enter admin ID"
+                value={adminLogin.username}
+                onChange={(event) => setAdminLogin((current) => ({ ...current, username: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="admin-password">Password</label>
+              <input
+                id="admin-password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Enter password"
+                value={adminLogin.password}
+                onChange={(event) => setAdminLogin((current) => ({ ...current, password: event.target.value }))}
+                required
+              />
+            </div>
+            <button className="submit-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+            <p className="form-note">Demo only — credentials are not verified.</p>
+          </form>
+        </section>
+      </main>
+    )
+  }
+
+  if (role === 'admin' && adminAuthenticated) {
     return (
       <main className="page-shell">
         <section className="feedback-card admin-card" aria-labelledby="admin-title">
           <header className="page-header">
-            <button className="back-link" type="button" onClick={() => setRole('')}>← Change role</button>
-            <div className="brand-mark" aria-hidden="true">F</div>
+            <button className="back-link" type="button" onClick={changeRole}>← Change role</button>
+            <CollegeLogo />
             <p className="eyebrow">ADMIN</p>
             <h1 id="admin-title">Manage subjects and faculty</h1>
             <p className="intro">Choose a branch and semester to edit the subject and faculty names students will see.</p>
@@ -211,6 +280,7 @@ function App() {
     return (
       <main className="page-shell">
         <section className="feedback-card success-card" aria-live="polite">
+          <button className="back-link" type="button" onClick={changeRole}>← Change role</button>
           <div className="success-mark" aria-hidden="true">✓</div>
           <p className="eyebrow">FEEDBACK RECEIVED</p>
           <h1>Thank you, {student.name.split(' ')[0]}.</h1>
@@ -226,7 +296,8 @@ function App() {
     <main className="page-shell">
       <section className="feedback-card" aria-labelledby="page-title">
         <header className="page-header">
-          <div className="brand-mark" aria-hidden="true">F</div>
+          <button className="back-link" type="button" onClick={changeRole}>← Change role</button>
+          <CollegeLogo />
           <p className="eyebrow">FACULTY FEEDBACK</p>
           <h1 id="page-title">{step === 1 ? 'Student details' : 'Rate your subjects'}</h1>
           <p className="intro">

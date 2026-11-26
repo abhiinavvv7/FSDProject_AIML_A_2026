@@ -19,6 +19,21 @@
   width: min(100%, 850px);
 }
 
+.admin-login-card {
+  width: min(100%, 460px);
+  align-self: center;
+}
+
+.admin-login-form {
+  display: grid;
+  gap: 17px;
+  margin-top: 25px;
+}
+
+.admin-login-form .form-note {
+  margin: -7px 0 0;
+}
+
 .back-link {
   display: block;
   margin: 0 0 20px;
@@ -207,6 +222,15 @@
   color: #40563d;
   font-size: 18px;
   font-weight: 700;
+}
+
+.brand-mark svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .eyebrow {
